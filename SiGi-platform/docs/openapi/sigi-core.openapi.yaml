@@ -1,0 +1,123 @@
+openapi: 3.1.0
+info:
+  title: SIGI Core API
+  version: 0.1.0
+servers:
+  - url: http://localhost:3000/api
+paths:
+  /health:
+    get:
+      summary: Health probe
+      responses:
+        '200':
+          description: Healthy
+  /ready:
+    get:
+      summary: Readiness probe
+      responses:
+        '200':
+          description: Ready
+  /catalogs:
+    get:
+      summary: List controlled catalogs
+      responses:
+        '200':
+          description: Catalogs list
+  /schemas:
+    get:
+      summary: List canonical schemas
+      responses:
+        '200':
+          description: Canonical schema list
+  /datasets:
+    post:
+      summary: Submit canonical dataset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatasetSubmission'
+      responses:
+        '202':
+          description: Dataset accepted
+  /datasets/{id}:
+    get:
+      summary: Get dataset by id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Dataset found
+        '404':
+          description: Dataset not found
+  /datasets/{id}/validation:
+    get:
+      summary: Get dataset validation status
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Validation report
+  /audit:
+    get:
+      summary: Query audit trail
+      responses:
+        '200':
+          description: Audit events
+  /projects:
+    get:
+      summary: List projects
+      responses:
+        '200':
+          description: Project list
+  /projects/{id}:
+    get:
+      summary: Get project by id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Project found
+        '404':
+          description: Project not found
+  /indicators:
+    get:
+      summary: List indicators
+      responses:
+        '200':
+          description: Indicator list
+  /territories:
+    get:
+      summary: List territories
+      responses:
+        '200':
+          description: Territory list
+components:
+  schemas:
+    DatasetSubmission:
+      type: object
+      required: [institutionId, sourceId, schemaCode, payload]
+      properties:
+        institutionId:
+          type: string
+        sourceId:
+          type: string
+        schemaCode:
+          type: string
+        payload:
+          type: object
+          additionalProperties: true
+

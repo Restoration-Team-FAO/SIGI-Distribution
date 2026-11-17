@@ -1,0 +1,4 @@
+project_code,project_name,lead_institution_code,start_date,end_date,total_area_ha,status
+CR-PRJ-900,Proyecto inválido sin institución,,2025-01-01,2025-12-31,120.00,active
+CR-PRJ-901,Proyecto con área negativa,minae,2025-02-01,2025-12-31,-5.00,active
+CR-PRJ-902,Proyecto válido de control,minae,2025-03-01,2025-12-31,75.00,active

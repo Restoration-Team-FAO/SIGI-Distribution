@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "institutions": [
+    {
+      "code": "institution-code",
+      "name": "Institution name",
+      "status": "active",
+      "egiSpaces": [
+        {
+          "code": "EGI-INSTITUTION-01",
+          "name": "Institution operational space",
+          "description": "Operational scope approved for SIGI.",
+          "responsible": "Institution SIGI coordinator",
+          "territorialScope": "Approved territorial scope",
+          "thematicScope": "Approved thematic scope",
+          "visibility": "institutional",
+          "status": "active",
+          "memberships": [
+            {
+              "userEmail": "editor@example.org",
+              "roleCode": "egi_editor",
+              "membershipStatus": "active"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

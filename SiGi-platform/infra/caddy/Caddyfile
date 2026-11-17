@@ -1,0 +1,42 @@
+{
+	email {$SIGI_ACME_EMAIL}
+	admin off
+}
+
+(sigi_security) {
+	encode zstd gzip
+	header {
+		-Server
+		X-Content-Type-Options nosniff
+		Referrer-Policy same-origin
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	}
+
+	handle /api/* {
+		reverse_proxy sigi-api:3000
+	}
+
+	@public_ogc path /geoserver/wms* /geoserver/wfs* /geoserver/ows*
+	handle @public_ogc {
+		reverse_proxy geoserver:8080
+	}
+
+	handle /geoserver/* {
+		respond "Not Found" 404
+	}
+
+	handle_errors {
+		respond "Service Unavailable" 503
+	}
+}
+
+{$SIGI_PUBLIC_DOMAIN} {
+	redir https://{$SIGI_ADMIN_DOMAIN}{uri} permanent
+}
+
+{$SIGI_ADMIN_DOMAIN} {
+	import sigi_security
+	handle {
+		reverse_proxy frontend-sigi:80
+	}
+}

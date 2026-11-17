@@ -1,0 +1,38 @@
+services:
+  frontend-sigi:
+    build:
+      args:
+        VITE_SIGI_API_URL: /api
+        VITE_GEOSERVER_WMS_URL: /geoserver/wms
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      DEMO_PORTAL_DOMAIN: ${DEMO_PORTAL_DOMAIN:?Define DEMO_PORTAL_DOMAIN in demo/.env.demo}
+      DEMO_ADMIN_DOMAIN: ${DEMO_ADMIN_DOMAIN:?Define DEMO_ADMIN_DOMAIN in demo/.env.demo}
+      DEMO_ACME_EMAIL: ${DEMO_ACME_EMAIL:?Define DEMO_ACME_EMAIL in demo/.env.demo}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    depends_on:
+      frontend-sigi:
+        condition: service_healthy
+      sigi-api:
+        condition: service_healthy
+      geoserver:
+        condition: service_healthy
+    volumes:
+      - ./demo/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  caddy_data:
+  caddy_config:

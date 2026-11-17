@@ -1,0 +1,11 @@
+.env
+.env.*
+!.env.example
+!.env.production.example
+*.dump
+*.sql.gz
+*.tar.gz
+*.zip
+backups/
+node_modules/
+dist/

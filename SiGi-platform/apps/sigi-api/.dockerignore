@@ -1,0 +1,10 @@
+# The build context is this folder, so the repo-root .dockerignore does not
+# apply here. Without these exclusions `COPY . .` ships the host's stale build
+# output into the image, where `nest build` can leave it in place — the image
+# then runs code that does not match src/.
+node_modules
+dist
+coverage
+*.tsbuildinfo
+.env
+.env.*

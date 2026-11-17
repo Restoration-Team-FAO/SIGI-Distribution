@@ -1,0 +1,39 @@
+{
+  email {$DEMO_ACME_EMAIL}
+  admin off
+}
+
+(sigi_common) {
+  encode zstd gzip
+
+  header {
+    -Server
+    X-Content-Type-Options nosniff
+    Referrer-Policy same-origin
+  }
+
+  handle /api/* {
+    reverse_proxy sigi-api:3000
+  }
+
+  # Public WMS/OWS only. The GeoServer administration UI remains private.
+  handle /geoserver/wms* {
+    reverse_proxy geoserver:8080
+  }
+
+  handle /geoserver/ows* {
+    reverse_proxy geoserver:8080
+  }
+}
+
+{$DEMO_PORTAL_DOMAIN} {
+  redir https://{$DEMO_ADMIN_DOMAIN}{uri} permanent
+}
+
+{$DEMO_ADMIN_DOMAIN} {
+  import sigi_common
+
+  handle {
+    reverse_proxy frontend-sigi:80
+  }
+}

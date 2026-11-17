@@ -1,0 +1,2 @@
+# Replace SERVER_IP with the private/LAN address of the SIGI demo server.
+SERVER_IP sigi-demo.internal admin.sigi-demo.internal

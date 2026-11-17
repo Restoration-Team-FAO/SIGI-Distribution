@@ -1,0 +1,12 @@
+services:
+  postgres:
+    volumes:
+      - ./infra/postgres/empty-demo/003_phase5_demo_seed.sql:/docker-entrypoint-initdb.d/003_phase5_demo_seed.sql:ro
+      - ./infra/postgres/empty-demo/003a_egi_workspace_prerequisite.sql:/docker-entrypoint-initdb.d/003a_egi_workspace_prerequisite.sql:ro
+      - ./infra/postgres/empty-demo/999_empty_demo.sql:/docker-entrypoint-initdb.d/999_empty_demo.sql:ro
+      - ./infra/postgres/empty-demo/003_phase5_demo_seed.sql:/docker-entrypoint-initdb.d/900_phase5_demo_seed.sql:ro
+      - ./infra/postgres/production/998_remove_operational_seed.sql:/docker-entrypoint-initdb.d/998_production_seed_policy.sql:ro
+
+  sigi-api:
+    environment:
+      SIGI_API_PORT: 3000

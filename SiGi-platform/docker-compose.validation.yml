@@ -1,0 +1,42 @@
+# Local production-like validation overlay. It preserves production runtime
+# settings while exposing only loopback ports for browser and API checks.
+services:
+  database-roles-init:
+    environment:
+      SIGI_APP_DB_PASSWORD: ${SIGI_APP_DB_PASSWORD:-${POSTGRES_PASSWORD}}
+      GEOSERVER_DB_PASSWORD: ${GEOSERVER_DB_PASSWORD:-${POSTGRES_PASSWORD}}
+
+  sigi-api:
+    environment:
+      DATABASE_URL: postgresql://${SIGI_APP_DB_USER:-sigi_app}:${SIGI_APP_DB_PASSWORD:-${POSTGRES_PASSWORD}}@postgres:5432/${POSTGRES_DB:-sigi_db}
+      # Browser suites exercise many admin GETs in one minute; production keeps
+      # its stricter value from .env.production and the release gate uses cooldowns.
+      SENSITIVE_RATE_LIMIT_MAX_REQUESTS: ${SIGI_VALIDATION_SENSITIVE_RATE_LIMIT_MAX_REQUESTS:-1000}
+    ports:
+      - "127.0.0.1:${SIGI_API_PORT:-3000}:3000"
+    networks: [edge, backend, egress]
+
+  frontend-sigi:
+    ports:
+      - "127.0.0.1:${SIGI_FRONTEND_PORT:-${FRONTEND_ADMIN_PORT:-5174}}:80"
+    networks: [edge, egress]
+
+  geoserver:
+    environment:
+      GEOSERVER_CORS_ALLOWED_ORIGINS: http://127.0.0.1:${SIGI_FRONTEND_PORT:-${FRONTEND_ADMIN_PORT:-5174}}
+    ports:
+      - "127.0.0.1:${GEOSERVER_PORT:-8081}:8080"
+    networks: [edge, backend, egress]
+
+  geoserver-init:
+    environment:
+      GEOSERVER_DB_PASSWORD: ${GEOSERVER_DB_PASSWORD:-${POSTGRES_PASSWORD}}
+
+  integration-service:
+    environment:
+      DATABASE_URL: postgresql://${SIGI_APP_DB_USER:-sigi_app}:${SIGI_APP_DB_PASSWORD:-${POSTGRES_PASSWORD}}@postgres:5432/${POSTGRES_DB:-sigi_db}
+      OUTBOUND_HTTP_ALLOWED_HOSTS: ${OUTBOUND_HTTP_ALLOWED_HOSTS:-host.docker.internal}
+
+  gis-service:
+    environment:
+      DATABASE_URL: postgresql://${SIGI_APP_DB_USER:-sigi_app}:${SIGI_APP_DB_PASSWORD:-${POSTGRES_PASSWORD}}@postgres:5432/${POSTGRES_DB:-sigi_db}

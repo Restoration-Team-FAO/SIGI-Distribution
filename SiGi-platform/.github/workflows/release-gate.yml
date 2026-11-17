@@ -1,0 +1,123 @@
+name: sigi-release-gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  release-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SIGI_RELEASE_GATE_COOLDOWN_MS: 61000
+      SIGI_SMOKE_RATE_LIMIT_RETRY_MS: 61000
+      SIGI_SMOKE_MAX_ATTEMPTS: 2
+      SIGI_SMOKE_API_URL: http://127.0.0.1:3000/api
+      SIGI_COMPOSE_PROJECT_NAME: sigi-release-gate
+      SIGI_COMPOSE_FILE: docker-compose.prod.yml:docker-compose.validation.yml
+      SIGI_ENV_FILE: .env.production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Audit production dependencies
+        run: npm run security:audit:prod
+
+      - name: Generate CI production env
+        run: npm run ci:prepare:prod-env
+
+      - name: Verify production env
+        run: npm run verify:env:prod
+
+      - name: Start production stack
+        run: docker compose --project-name "$SIGI_COMPOSE_PROJECT_NAME" --env-file .env.production -f docker-compose.prod.yml -f docker-compose.validation.yml up -d --build
+
+      - name: Wait for API health
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3000/api/health > /dev/null; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "SIGI API did not become healthy in time" >&2
+          docker compose --project-name "$SIGI_COMPOSE_PROJECT_NAME" --env-file .env.production -f docker-compose.prod.yml -f docker-compose.validation.yml ps
+          exit 1
+        shell: bash
+
+      - name: Verify unified frontend routes and headers
+        run: npm run smoke:unified-frontend
+        env:
+          SIGI_UNIFIED_FRONTEND_URL: http://127.0.0.1:5174
+          SIGI_COUNTRY_REFERENCE_URL: http://127.0.0.1:5173
+
+      - name: Apply and verify migrations
+        run: npm run db:migrate
+
+      - name: Run release gate
+        run: npm run release:gate | tee release-gate.json
+        shell: bash
+
+      - name: Post-deploy smoke
+        run: npm run smoke:post-deploy
+
+      - name: Backup platform
+        run: node scripts/ops/backup-platform.mjs --output=/tmp/sigi-backups --retention-days=7 | tee backup-result.json
+
+      - name: Restore platform
+        run: |
+          BACKUP_DIR=$(node -e "const fs=require('fs'); const text=fs.readFileSync('backup-result.json','utf8'); console.log(JSON.parse(text).backup)")
+          node scripts/ops/restore-platform.mjs --backup="$BACKUP_DIR" --confirm=RESTORE-SIGI-PLATFORM --start=true
+        shell: bash
+
+      - name: Post-restore smoke
+        run: npm run smoke:post-deploy
+
+      - name: Capture metrics snapshot
+        if: always()
+        run: |
+          INTERNAL_TOKEN=$(grep '^SIGI_INTERNAL_SERVICE_TOKEN=' .env.production | cut -d= -f2-)
+          curl -fsS -H "Authorization: Bearer ${INTERNAL_TOKEN}" http://127.0.0.1:3000/api/metrics > sigi-api.metrics.prom
+        shell: bash
+
+      - name: Capture compose status
+        if: always()
+        run: docker compose --project-name "$SIGI_COMPOSE_PROJECT_NAME" --env-file .env.production -f docker-compose.prod.yml -f docker-compose.validation.yml ps
+
+      - name: Capture compose logs
+        if: always()
+        run: docker compose --project-name "$SIGI_COMPOSE_PROJECT_NAME" --env-file .env.production -f docker-compose.prod.yml -f docker-compose.validation.yml logs --no-color > docker-compose.release-gate.log
+
+      - name: Upload release gate artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sigi-release-gate
+          path: |
+            release-gate.json
+            backup-result.json
+            sigi-api.metrics.prom
+            docker-compose.release-gate.log
+            .env.production
+
+      - name: Stop production stack
+        if: always()
+        run: docker compose --project-name "$SIGI_COMPOSE_PROJECT_NAME" --env-file .env.production -f docker-compose.prod.yml -f docker-compose.validation.yml down -v

@@ -1,0 +1,9 @@
+CHECKLIST DE DIAGNOSTICO SIGI
+
+1. Validar si la API responde en /api/health.
+2. Confirmar si el usuario sigue con sesion valida.
+3. Revisar EGI activo o vista global.
+4. Leer mensaje de error, codigo y requestId.
+5. Revisar logs del servicio afectado.
+6. Ejecutar el smoke o gate relacionado si aplica.
+7. Confirmar si el problema es de datos, permisos o integracion.

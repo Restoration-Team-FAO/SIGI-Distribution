@@ -1,0 +1,273 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: '${LOG_MAX_SIZE:-10m}'
+    max-file: '${LOG_MAX_FILES:-5}'
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    mem_limit: ${POSTGRES_MEMORY_LIMIT:-4g}
+    stop_grace_period: 60s
+    env_file:
+      - ${SIGI_ENV_FILE:-.env.production}
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'test "$(cat /proc/1/comm)" = postgres && pg_isready -U ${POSTGRES_USER:-sigi_user} -d ${POSTGRES_DB:-sigi_db}',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    volumes:
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+      - ./infra/postgres/empty-demo/003_phase5_demo_seed.sql:/docker-entrypoint-initdb.d/900_phase5_demo_seed.sql:ro
+      - ./infra/postgres/production/998_remove_operational_seed.sql:/docker-entrypoint-initdb.d/998_production_seed_policy.sql:ro
+      - postgres_data:/var/lib/postgresql/data
+    networks: [backend]
+    logging: *default-logging
+
+  database-roles-init:
+    image: postgis/postgis:16-3.4
+    restart: 'no'
+    mem_limit: ${DATABASE_ROLES_INIT_MEMORY_LIMIT:-256m}
+    env_file:
+      - ${SIGI_ENV_FILE:-.env.production}
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      SIGI_APP_DB_USER: ${SIGI_APP_DB_USER:-sigi_app}
+      GEOSERVER_DB_USER: ${GEOSERVER_DB_USER:-geoserver_ro}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ['sh', '/roles/configure-runtime-roles.sh']
+    volumes:
+      - ./infra/postgres/roles/configure-runtime-roles.sh:/roles/configure-runtime-roles.sh:ro
+    networks: [backend]
+    logging: *default-logging
+
+  sigi-api:
+    build: ./apps/sigi-api
+    restart: unless-stopped
+    mem_limit: ${SIGI_API_MEMORY_LIMIT:-1536m}
+    env_file:
+      - ${SIGI_ENV_FILE:-.env.production}
+    environment:
+      NODE_ENV: production
+      APP_ENV: production
+      SIGI_GIT_SHA: ${SIGI_GIT_SHA:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      database-roles-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        ['CMD-SHELL', 'wget -qO- http://127.0.0.1:3000/api/health || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    volumes:
+      - sigi_files_data:/var/sigi-files
+    networks: [edge, backend]
+    logging: *default-logging
+
+  frontend-sigi:
+    build:
+      context: .
+      dockerfile: ./apps/frontend-sigi/Dockerfile
+      args:
+        VITE_SIGI_API_URL: /api
+        VITE_GEOSERVER_ENABLED: ${VITE_GEOSERVER_ENABLED:-true}
+        VITE_GEOSERVER_WMS_URL: /geoserver/wms
+        VITE_GEOSERVER_TERRITORIES_LAYER: ${VITE_GEOSERVER_TERRITORIES_LAYER:-sigi:public_territories}
+        VITE_GEOSERVER_PROJECT_LAYER: ${VITE_GEOSERVER_PROJECT_LAYER:-sigi:public_project_polygons}
+        VITE_SIGI_INSTITUTION_NAME: ${VITE_SIGI_INSTITUTION_NAME:-}
+        VITE_SIGI_SUPPORT_EMAIL: ${VITE_SIGI_SUPPORT_EMAIL:-}
+        VITE_SIGI_SUPPORT_LABEL: ${VITE_SIGI_SUPPORT_LABEL:-}
+        SIGI_GIT_SHA: ${SIGI_GIT_SHA:-}
+    restart: unless-stopped
+    mem_limit: ${SIGI_FRONTEND_MEMORY_LIMIT:-256m}
+    env_file:
+      - ${SIGI_ENV_FILE:-.env.production}
+    depends_on:
+      sigi-api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        ['CMD-SHELL', 'wget -qO- http://127.0.0.1/ >/dev/null 2>&1 || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks: [edge]
+    logging: *default-logging
+
+  integration-service:
+    build: ./services/integration-service
+    restart: unless-stopped
+    mem_limit: ${INTEGRATION_SERVICE_MEMORY_LIMIT:-768m}
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    env_file:
+      - ${SIGI_ENV_FILE:-.env.production}
+    environment:
+      NODE_ENV: production
+      APP_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      database-roles-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'python -c "import urllib.request; urllib.request.urlopen(''http://localhost:8001/health/'', timeout=3)"',
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks: [backend, egress]
+    logging: *default-logging
+
+  gis-service:
+    build: ./services/gis-service
+    restart: unless-stopped
+    mem_limit: ${GIS_SERVICE_MEMORY_LIMIT:-1536m}
+    env_file:
+      - ${SIGI_ENV_FILE:-.env.production}
+    environment:
+      NODE_ENV: production
+      APP_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      database-roles-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'python -c "import urllib.request; urllib.request.urlopen(''http://localhost:8002/health/'', timeout=3)"',
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks: [backend]
+    logging: *default-logging
+
+  geoserver:
+    image: docker.osgeo.org/geoserver:2.28.0
+    restart: unless-stopped
+    mem_limit: ${GEOSERVER_MEMORY_LIMIT:-4g}
+    stop_grace_period: 60s
+    env_file:
+      - ${SIGI_ENV_FILE:-.env.production}
+    environment:
+      GEOSERVER_DATA_DIR: /opt/geoserver_data
+      EXTRA_JAVA_OPTS: ${GEOSERVER_JAVA_OPTS:--Xms1g -Xmx3g -XX:+UseG1GC -Djava.awt.headless=true}
+      SKIP_DEMO_DATA: 'true'
+      CORS_ENABLED: 'true'
+      CORS_ALLOWED_ORIGINS: ${GEOSERVER_CORS_ALLOWED_ORIGINS}
+      CORS_ALLOWED_METHODS: 'GET,HEAD,OPTIONS'
+      CORS_ALLOWED_HEADERS: 'Origin,Accept,X-Requested-With,Content-Type,Access-Control-Request-Method,Access-Control-Request-Headers'
+      CORS_ALLOW_CREDENTIALS: 'false'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      database-roles-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'wget -qO- http://127.0.0.1:8080/geoserver/web/ >/dev/null 2>&1 || exit 1',
+        ]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    volumes:
+      - geoserver_data:/opt/geoserver_data
+    networks: [edge, backend]
+    logging: *default-logging
+
+  geoserver-init:
+    image: curlimages/curl:8.8.0
+    restart: 'no'
+    mem_limit: ${GEOSERVER_INIT_MEMORY_LIMIT:-256m}
+    env_file:
+      - ${SIGI_ENV_FILE:-.env.production}
+    depends_on:
+      geoserver:
+        condition: service_healthy
+      database-roles-init:
+        condition: service_completed_successfully
+    environment:
+      GEOSERVER_URL: http://geoserver:8080/geoserver
+      GEOSERVER_DB_HOST: postgres
+      GEOSERVER_DB_PORT: 5432
+      GEOSERVER_DB_USER: ${GEOSERVER_DB_USER:-geoserver_ro}
+      GEOSERVER_DB_PASSWORD: ${GEOSERVER_DB_PASSWORD}
+    command: ['sh', '/bootstrap/bootstrap.sh']
+    volumes:
+      - ./infra/geoserver/bootstrap.sh:/bootstrap/bootstrap.sh:ro
+      - ./infra/geoserver/styles:/bootstrap/styles:ro
+    networks: [backend]
+    logging: *default-logging
+
+  caddy:
+    image: caddy:2.8.4-alpine
+    restart: unless-stopped
+    mem_limit: ${CADDY_MEMORY_LIMIT:-256m}
+    environment:
+      SIGI_ACME_EMAIL: ${SIGI_ACME_EMAIL}
+      SIGI_PUBLIC_DOMAIN: ${SIGI_PUBLIC_DOMAIN}
+      SIGI_ADMIN_DOMAIN: ${SIGI_ADMIN_DOMAIN}
+    ports:
+      - '${SIGI_PUBLIC_BIND_HOST:-0.0.0.0}:${SIGI_HTTP_PORT:-80}:80'
+      - '${SIGI_PUBLIC_BIND_HOST:-0.0.0.0}:${SIGI_HTTPS_PORT:-443}:443'
+      - '${SIGI_PUBLIC_BIND_HOST:-0.0.0.0}:${SIGI_HTTPS_PORT:-443}:443/udp'
+    depends_on:
+      frontend-sigi:
+        condition: service_healthy
+      sigi-api:
+        condition: service_healthy
+      geoserver:
+        condition: service_healthy
+      geoserver-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ['CMD-SHELL', 'nc -z 127.0.0.1 443']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    volumes:
+      - ${SIGI_CADDYFILE:-./infra/caddy/Caddyfile}:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [edge, egress]
+    logging: *default-logging
+
+networks:
+  edge:
+    internal: true
+  backend:
+    internal: true
+  egress:
+
+volumes:
+  postgres_data:
+  geoserver_data:
+  sigi_files_data:
+  caddy_data:
+  caddy_config:

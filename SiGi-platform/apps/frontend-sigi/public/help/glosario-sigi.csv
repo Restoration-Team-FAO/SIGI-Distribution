@@ -1,0 +1,7 @@
+termino,definicion
+EGI,Espacio de Gestion de Informacion usado para separar operacion y datos
+Fuente,Origen formal de datos registrado en SIGI
+Batch,Lote de importacion procesado por el pipeline
+Publication,Salida o canal de publicacion visible para lectura o difusion
+Export target,Destino de interoperabilidad o empaquetado estructurado
+RequestId,Referencia tecnica de una solicitud para trazabilidad y soporte

@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-09-17",
+  "dockerProject": "sigi-demo-local",
+  "source": {
+    "branch": "demo-deploy-tested",
+    "commit": "ec40482c34a536db1dc9b53c980f9c848baf6fb5"
+  },
+  "comparison": {
+    "releaseCommit": "b3cbc6a76b755c048c00bca92f7afd76225cbfd0",
+    "mergeBase": "a0dbadcddefd98ea547e6298a1b6bea31ca0a689"
+  },
+  "applicationImages": {
+    "frontendAdmin": "sha256:d9e64f559a2267782e9ee1fb42671c607c824b2366647e731688edb06ca275b2",
+    "frontendCountry": "sha256:a5f80e4d53ca8293ea9a4f8f551e7bc02b57320c97847871251360d2d68c27b4",
+    "api": "sha256:42b98591272090c03d436cfe207b6d730cffbe4bdd87b2ba15ba91eb56e7bcf9",
+    "integrationService": "sha256:1b48f561cfa7a0129d1fa1e9dd974dd1db03e480a2f627a78b0b849339f0c906",
+    "gisService": "sha256:a1e89e4c32d317e0220ebe6f6eab89df0431909588df540cf03b2ed98f306ffe"
+  },
+  "evidence": {
+    "path": "C:\\GIT\\SIGI\\_audit_evidence\\sigi-demo-local-2026-09-17",
+    "databaseDumpSha256": "EB526451BBC0FFE601E0024E498DD1140F3CF2349D1781FEEFF18864DDC6B150",
+    "databaseSchemaSha256": "704BE11E033C6DCF812DF51DC517E33FB455F39387B189AAF767341D7A2EC5A8",
+    "composeNoInterpolationSha256": "B5D4E5983C52800EDE49A7DB060A20731583931AAAD2A59B3473F308B3932305",
+    "frontendManifestSha256": "4BF4A24B7D00BB18F3C7E0665C663EFAEBCB8253A23F8C2C7966241B33258680",
+    "runtimeManifestSha256": "4B4A866D4408612A7E4B1E771A33DD0C39ED7B161153D98CCDDD833D590DFC92"
+  },
+  "verification": {
+    "frontendManifestDeltaCount": 0,
+    "runtimeManifestDeltaCount": 0,
+    "dockerBuild": "PASS",
+    "runtimeSmoke": "PASS"
+  }
+}
+

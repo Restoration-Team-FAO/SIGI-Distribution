@@ -1,0 +1,173 @@
+@startuml
+title SIGI Files Explorer - Arquitectura
+
+package "Frontend" {
+  [frontend-sigi\nFilesExplorerPage]
+  [frontend-country\nDocumentsPage]
+}
+
+package "Backend NestJS" {
+  [FilesController]
+  [PublicFilesController]
+  [FilesService]
+  [FilesRepository]
+  [FilesPermissionsService]
+  [FilesAuditService]
+  [FilesStorageService]
+}
+
+database "PostgreSQL" {
+  [documents.folders]
+  [documents.files]
+  [documents.file_versions]
+  [documents.file_metadata]
+  [documents.file_entity_links]
+  [documents.file_permissions]
+  [documents.file_audit_events]
+  [documents.file_storage_objects]
+}
+
+folder "Local Storage\nFILE_STORAGE_ROOT" as storage
+
+[frontend-sigi\nFilesExplorerPage] --> [FilesController]
+[frontend-country\nDocumentsPage] --> [PublicFilesController]
+[FilesController] --> [FilesService]
+[PublicFilesController] --> [FilesService]
+[FilesService] --> [FilesRepository]
+[FilesService] --> [FilesPermissionsService]
+[FilesService] --> [FilesAuditService]
+[FilesService] --> [FilesStorageService]
+[FilesRepository] --> [documents.folders]
+[FilesRepository] --> [documents.files]
+[FilesRepository] --> [documents.file_versions]
+[FilesRepository] --> [documents.file_metadata]
+[FilesRepository] --> [documents.file_entity_links]
+[FilesRepository] --> [documents.file_permissions]
+[FilesRepository] --> [documents.file_audit_events]
+[FilesRepository] --> [documents.file_storage_objects]
+[FilesStorageService] --> storage
+
+newpage
+title Flujo de carga
+
+actor Admin
+participant "frontend-sigi" as FA
+participant "FilesController" as FC
+participant "FilesService" as FS
+participant "FilesStorageService" as FSS
+database "documents.*" as DB
+
+Admin -> FA : seleccionar archivo
+FA -> FC : POST /api/admin/files/upload
+FC -> FS : uploadFile()
+FS -> FSS : validar + checksum + save
+FSS --> FS : storage_key + absolute_path
+FS -> DB : insert files + version + metadata + storage + audit
+FS --> FC : file detail
+FC --> FA : response JSON
+
+newpage
+title Flujo de descarga
+
+actor User
+participant "Client" as C
+participant "FilesController/PublicFilesController" as DC
+participant "FilesService" as DS
+participant "FilesPermissionsService" as DPS
+participant "FilesStorageService" as DSS
+database "documents.*" as DBD
+
+User -> C : solicitar descarga
+C -> DC : GET /download
+DC -> DS : downloadFile()
+DS -> DPS : validar acceso
+DS -> DBD : resolver versión actual y storage object
+DS -> DSS : open stream
+DS --> DC : stream + headers
+DC --> C : archivo
+
+newpage
+title Modelo entidad-relación
+
+entity "documents.folders" as folders {
+  *id : uuid
+  --
+  parent_id : uuid
+  institution_id : uuid
+  project_id : uuid
+  path : text
+  deleted_at : timestamptz
+}
+
+entity "documents.files" as files {
+  *id : uuid
+  --
+  folder_id : uuid
+  current_version_id : uuid
+  institution_id : uuid
+  project_id : uuid
+  checksum_sha256 : text
+  is_public : boolean
+  deleted_at : timestamptz
+}
+
+entity "documents.file_versions" as versions {
+  *id : uuid
+  --
+  file_id : uuid
+  version_number : int
+  storage_key : text
+}
+
+entity "documents.file_metadata" as metadata {
+  *id : uuid
+  --
+  file_id : uuid
+  metadata : jsonb
+}
+
+entity "documents.file_entity_links" as links {
+  *id : uuid
+  --
+  file_id : uuid
+  entity_type : text
+  entity_id : uuid
+}
+
+entity "documents.file_permissions" as perms {
+  *id : uuid
+  --
+  file_id : uuid
+  folder_id : uuid
+  subject_type : text
+  subject_id : uuid
+}
+
+entity "documents.file_audit_events" as audit {
+  *id : uuid
+  --
+  file_id : uuid
+  folder_id : uuid
+  event_type : text
+}
+
+entity "documents.file_storage_objects" as storageObjects {
+  *id : uuid
+  --
+  file_id : uuid
+  version_id : uuid
+  storage_key : text
+}
+
+folders ||--o{ folders : parent
+folders ||--o{ files : contains
+files ||--o{ versions : versioned_as
+files ||--|| metadata : described_by
+files ||--o{ links : linked_to
+files ||--o{ perms : file_acl
+folders ||--o{ perms : folder_acl
+files ||--o{ audit : audited_as
+folders ||--o{ audit : audited_as
+versions ||--o{ storageObjects : stored_as
+
+@enduml

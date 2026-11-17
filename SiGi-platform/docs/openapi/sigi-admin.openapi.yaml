@@ -1,0 +1,350 @@
+openapi: 3.1.0
+info:
+  title: SIGI Admin API
+  version: 0.1.0
+servers:
+  - url: http://localhost:3000/api
+paths:
+  /admin/sources:
+    get:
+      summary: List data sources
+      responses:
+        '200':
+          description: Source list
+    post:
+      summary: Create data source
+      responses:
+        '201':
+          description: Source created
+  /admin/connectors:
+    get:
+      summary: List connectors
+      responses:
+        '200':
+          description: Connector list
+  /admin/connectors/{id}/run:
+    post:
+      summary: Run connector
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '202':
+          description: Connector run accepted
+  /admin/validations:
+    get:
+      summary: List validations
+      responses:
+        '200':
+          description: Validation list
+  /admin/validations/{id}/assign:
+    post:
+      summary: Assign validation
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Validation assigned
+  /admin/publications:
+    get:
+      summary: List publications
+      parameters:
+        - in: query
+          name: scope
+          required: false
+          schema:
+            type: string
+            enum: [active, global]
+          description: Alcance de consulta. `global` requiere permisos administrativos globales.
+      responses:
+        '200':
+          description: Publication list
+  /admin/publications/{id}/publish:
+    post:
+      summary: Publish resource
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: scope
+          required: false
+          schema:
+            type: string
+            enum: [active, global]
+          description: Alcance de publicación. `global` requiere permisos administrativos globales.
+      responses:
+        '202':
+          description: Publication requested
+  /admin/incidents:
+    get:
+      summary: List incidents
+      parameters:
+        - in: query
+          name: scope
+          required: false
+          schema:
+            type: string
+            enum: [active, global]
+          description: Alcance de consulta. `global` requiere permisos administrativos globales.
+      responses:
+        '200':
+          description: Incident list
+  /admin/users:
+    get:
+      summary: List users
+      responses:
+        '200':
+          description: User list
+  /admin/roles:
+    get:
+      summary: List roles
+      responses:
+        '200':
+          description: Role list
+  /admin/audit:
+    get:
+      summary: List admin audit events
+      responses:
+        '200':
+          description: Audit list
+  /admin/reports:
+    get:
+      summary: List report instances in the active EGI and institution scope
+      responses:
+        '200':
+          description: Report instance list
+    post:
+      summary: Create a report draft from a versioned template
+      responses:
+        '201':
+          description: Report draft created
+  /admin/reports/dashboard:
+    get:
+      summary: Get real report metrics and recent audited activity
+      responses:
+        '200':
+          description: Report dashboard
+  /admin/reports/calendar:
+    get:
+      summary: Get the non-binding 2025-2033 reporting reference timeline
+      responses:
+        '200': { description: Reference milestones and disclaimer }
+  /admin/reports/commitments:
+    get:
+      summary: List country reporting commitments visible in the active EGI scope
+      responses:
+        '200': { description: Commitments with institutional contribution progress }
+    post:
+      summary: Create a country commitment and assign contributing institutions
+      responses:
+        '201': { description: Commitment created }
+  /admin/reports/commitments/export/{format}:
+    get:
+      summary: Export the visible commitment calendar as XLSX or iCalendar
+      parameters:
+        - in: path
+          name: format
+          required: true
+          schema: { type: string, enum: [xlsx, ics] }
+        - in: query
+          name: year
+          schema: { type: integer, minimum: 1900, maximum: 9999 }
+        - in: query
+          name: status
+          schema: { type: string }
+        - in: query
+          name: institutionId
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Filtered calendar file; export is recorded in the audit log
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet: {}
+            text/calendar: {}
+        '404': { description: Unsupported export format }
+  /admin/reports/commitments/evidence:
+    get:
+      summary: List documents, datasets and indicators eligible for the caller institution contribution
+      responses:
+        '200': { description: Institution-scoped evidence catalog }
+  /admin/reports/commitments/participants:
+    get:
+      summary: List active EGI users grouped by institution for assignment
+      responses:
+        '200': { description: Participant catalog }
+  /admin/reports/commitments/{id}/assignments:
+    patch:
+      summary: Add or remove institutions and assign responsible EGI users
+      responses:
+        '200': { description: Assignments updated }
+  /admin/reports/commitments/{id}/reminders:
+    patch:
+      summary: Configure in-app reminder days and overdue recurrence
+      responses:
+        '200': { description: Reminder rule updated }
+  /admin/reports/commitments/reminders/process:
+    post:
+      summary: Idempotently generate due reminders for the active EGI
+      responses:
+        '201': { description: Reminder processing result }
+  /admin/reports/notifications:
+    get:
+      summary: List the caller report notifications
+      responses:
+        '200': { description: User notification inbox }
+  /admin/reports/notifications/refresh:
+    post:
+      summary: Idempotently refresh due reminders for the caller
+      responses:
+        '201': { description: Personal reminders refreshed }
+  /admin/reports/notifications/{id}/read:
+    patch:
+      summary: Mark one caller-owned report notification as read
+      responses:
+        '200': { description: Notification marked read }
+  /admin/reports/commitments/{id}:
+    patch:
+      summary: Update dates, instructions or workflow status for a commitment
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Commitment updated }
+  /admin/reports/commitments/{id}/contributions/submit:
+    post:
+      summary: Submit the caller institution contribution
+      responses:
+        '201': { description: Contribution submitted }
+  /admin/reports/commitments/{id}/contributions/{contributionId}/review:
+    post:
+      summary: Validate an institutional contribution or request changes
+      responses:
+        '201': { description: Contribution reviewed }
+  /admin/reports/commitments/{id}/consolidate:
+    post:
+      summary: Create and link a report draft from validated institutional contributions
+      responses:
+        '201': { description: Consolidated report draft created }
+  /admin/reports/frameworks:
+    get:
+      summary: List reporting frameworks
+      responses:
+        '200':
+          description: Framework list
+  /admin/reports/templates:
+    get:
+      summary: List global and active-EGI report templates
+      responses:
+        '200':
+          description: Template list
+    post:
+      summary: Create an EGI-scoped versioned template
+      responses:
+        '201':
+          description: Template created
+  /admin/reports/mappings:
+    get:
+      summary: List explicit indicator-to-framework mappings
+      responses:
+        '200':
+          description: Mapping list
+    post:
+      summary: Create an explicit methodological mapping
+      responses:
+        '201':
+          description: Mapping created
+  /admin/reports/{id}:
+    get:
+      summary: Get report detail, sections, coverage and versions
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Report detail }
+        '404': { description: Missing or outside caller scope }
+    patch:
+      summary: Update an editable report
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Report updated }
+  /admin/reports/{id}/coverage:
+    get:
+      summary: Get the report data coverage matrix
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Coverage matrix }
+  /admin/reports/{id}/validate:
+    post:
+      summary: Run blocking and advisory report validations
+      responses:
+        '200': { description: Validation findings }
+  /admin/reports/{id}/generate:
+    post:
+      summary: Generate a reproducible draft version
+      responses:
+        '201': { description: Version generated }
+  /admin/reports/{id}/submit-review:
+    post:
+      summary: Submit report for technical review
+      responses:
+        '201': { description: Report submitted }
+  /admin/reports/{id}/approve:
+    post:
+      summary: Approve a valid report and create a major snapshot
+      responses:
+        '201': { description: Report approved }
+  /admin/reports/{id}/review:
+    post:
+      summary: Start technical review
+      responses:
+        '201': { description: Review started }
+  /admin/reports/{id}/request-changes:
+    post:
+      summary: Return a report to its author with technical observations
+      responses:
+        '201': { description: Changes requested }
+  /admin/reports/{id}/publish:
+    post:
+      summary: Publish an approved valid report
+      responses:
+        '201': { description: Report published }
+  /admin/reports/{id}/versions:
+    get:
+      summary: List immutable report versions
+      responses:
+        '200': { description: Version list }
+  /admin/reports/{id}/traceability:
+    get:
+      summary: Resolve section-variable-dataset-source traceability
+      responses:
+        '200': { description: Traceability paths }
+  /admin/reports/{id}/export/json:
+    get:
+      summary: Export a report as auditable JSON
+      responses:
+        '200':
+          description: JSON report file
+          content:
+            application/json: {}

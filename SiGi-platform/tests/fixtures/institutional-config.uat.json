@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "institutions": [
+    {
+      "code": "min-health",
+      "name": "Ministerio de Salud",
+      "status": "active",
+      "egiSpaces": [
+        {
+          "code": "EGI-R8-BOOTSTRAP",
+          "name": "EGI Bootstrap UAT R8",
+          "description": "Ámbito de validación para los roles bootstrap de la candidata.",
+          "responsible": "Coordinación SIGI UAT",
+          "territorialScope": "Cobertura nacional",
+          "thematicScope": "Validación de roles y operación",
+          "visibility": "institutional",
+          "status": "active",
+          "memberships": [
+            {
+              "userEmail": "national-admin@sigi.local",
+              "roleCode": "egi_admin",
+              "membershipStatus": "active"
+            },
+            {
+              "userEmail": "editor@sigi.local",
+              "roleCode": "egi_editor",
+              "membershipStatus": "active"
+            },
+            {
+              "userEmail": "validator@sigi.local",
+              "roleCode": "egi_validator",
+              "membershipStatus": "active"
+            },
+            {
+              "userEmail": "integration@sigi.local",
+              "roleCode": "egi_editor",
+              "membershipStatus": "active"
+            },
+            {
+              "userEmail": "reader@sigi.local",
+              "roleCode": "egi_viewer",
+              "membershipStatus": "active"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "r8-national",
+      "name": "Institución Nacional UAT R8",
+      "status": "active",
+      "egiSpaces": [
+        {
+          "code": "EGI-R8-NATIONAL",
+          "name": "EGI Nacional UAT R8",
+          "description": "Configuración institucional controlada para la candidata R8.",
+          "responsible": "Coordinación SIGI UAT",
+          "territorialScope": "Cobertura nacional",
+          "thematicScope": "Validación integral de candidata",
+          "visibility": "institutional",
+          "status": "active"
+        }
+      ]
+    },
+    {
+      "code": "r8-partner",
+      "name": "Institución Socia UAT R8",
+      "status": "active",
+      "egiSpaces": [
+        {
+          "code": "EGI-R8-PARTNER",
+          "name": "EGI Socio UAT R8",
+          "description": "Segundo ámbito para validar aislamiento institucional y EGI.",
+          "responsible": "Contraparte Institucional UAT",
+          "territorialScope": "Territorio institucional de prueba",
+          "thematicScope": "Intercambio y validación de información",
+          "visibility": "institutional",
+          "status": "active"
+        }
+      ]
+    }
+  ]
+}

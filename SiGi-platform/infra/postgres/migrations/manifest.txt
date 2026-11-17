@@ -1,0 +1,9 @@
+# Incremental migrations after the accepted ec40482c baseline.
+# Schema bootstrap remains in infra/postgres/init; demo seeds are never listed.
+infra/postgres/migrations/20260917_spatial_indexes.sql
+infra/postgres/migrations/20260918_operational_scope_permissions.sql
+infra/postgres/migrations/20260923_assistant_permission.sql
+infra/postgres/migrations/20261001_project_planning_workspace.sql
+infra/postgres/migrations/20261002_project_full_cycle.sql
+infra/postgres/migrations/20261015_project_geometry_exposure.sql
+infra/postgres/migrations/20261016_login_lockout.sql
